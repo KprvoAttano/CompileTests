@@ -37,8 +37,29 @@ def main() -> None:
     '''
     prog2 = 'int f1(int p1, float p2) { string a = p1 + p2; int x; }'''
     prog3 = 'for (;;);'
-    prog4 = '''                       
+    prog4 = '''
+    
             int[] a = new int[4];
+            
+            class A
+            {
+            
+            }
+            
+            int f()
+            {
+                int a = 4;
+                return a;
+            }
+            
+            for(int b = 0; b < 3; b = b + 1){
+            b  = b - 1;
+            }
+            
+            int c = 0;
+            while (c < 5){
+            c = c + 1;
+            }
             '''
     prog5 = '''
         int input_int(string name) {

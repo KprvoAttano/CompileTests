@@ -68,15 +68,22 @@ def make_parser():
 
     expr << logical_or
 
+    #массив
     array = pp.Forward()
-    array_new_init = pp.Keyword("new").suppress() + ident + LBRACK + expr + RBRACK + pp.ZeroOrMore(
+    array_new_init = pp.Keyword("new").suppress() + type_ + LBRACK + expr + RBRACK + pp.ZeroOrMore(
         LBRACK + expr + RBRACK)
-    array << ident + LBRACK + RBRACK  # определения для одномерного массива
+    array << type_ + LBRACK + RBRACK  # определения для одномерного массива
     array_inited = pp.Forward()
     array_inited << LBRACE + pp.Optional((expr ^ array_inited) + pp.ZeroOrMore(COMMA + (expr ^ array_inited))) + RBRACE
 
+    # классы
+    clazz_new_init = pp.Keyword("new").suppress() + ident + LPAR + RPAR  # определение инициализации класса
+
+    clazz_assign = pp.Forward()
+    clazz_assign << (ident + ASSIGN.suppress() + clazz_new_init).setName('assign')
+
     simple_assign = (
-                ident + ASSIGN.suppress() + (array_inited | (array_new_init) | expr | str_)).setName(
+                ident + ASSIGN.suppress() + (array_inited | (array_new_init | clazz_new_init) | expr | str_)).setName(
         'assign')  # присвоение
     var_decl_inner = simple_assign | ident  # инициализация и присвоение одного
     vars_decl = (array | ident) + var_decl_inner + pp.ZeroOrMore(
@@ -97,6 +104,7 @@ def make_parser():
 
     if_ = IF.suppress() + LPAR + expr + RPAR + stmt + pp.Optional(pp.Keyword("else").suppress() + stmt)
     for_ = FOR.suppress() + LPAR + for_stmt_list + SEMI + for_cond + SEMI + for_stmt_list + RPAR + for_body
+    while_ = pp.Keyword("while").suppress() + LPAR + expr + RPAR + stmt
     return_ = RETURN.suppress() + expr
     composite = LBRACE + stmt_list + RBRACE
 
@@ -104,9 +112,12 @@ def make_parser():
     params = pp.Optional(param + pp.ZeroOrMore(COMMA + param))
     func = type_ + ident + LPAR + params + RPAR + LBRACE + stmt_list + RBRACE
 
+    clazz_dec = pp.Keyword("class").suppress() + ident + LBRACE + pp.ZeroOrMore(func | (var_decl + SEMI)) + RBRACE
+
     stmt << (
         if_ |
         for_ |
+        while_ |
         return_ |
         simple_stmt + SEMI |
         # обязательно ниже if, for и т.п., иначе считает их за типы данных (сейчас уже не считает - см. грамматику)
@@ -114,10 +125,13 @@ def make_parser():
         vars_ + SEMI |
         vars_decl + SEMI |
         composite |
-        func
+        func |
+        clazz_dec
     )
 
     stmt_list << (pp.ZeroOrMore(stmt + pp.ZeroOrMore(SEMI)))
+
+    main = pp.ZeroOrMore(clazz_dec | func) + stmt_list
 
     # main = pp.ZeroOrMore() + stmt_list
     # program = main.ignore(

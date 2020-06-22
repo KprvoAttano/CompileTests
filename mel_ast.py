@@ -390,6 +390,37 @@ class ReturnNode(StmtNode):
         self.val = type_convert(self.val, func.func.type.return_type, self, 'возвращаемое значение')
         self.node_type = TypeDesc.VOID
 
+class ClazzDecNode(StmtNode):
+    def __init__(self, name: AstNode, *vars_list: Tuple[AstNode, ...],
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.name = name
+        self.vars_list = vars_list
+
+    @property
+    def childs(self) -> Tuple[ExprNode, ...]:
+        # return self.vars_type, (*self.vars_list)
+        return (self.name,) + self.vars_list
+
+    def __str__(self) -> str:
+        return 'class_decl'
+
+
+class ClazzNewInitNode(StmtNode):
+    def __init__(self, vars_type: StmtNode, *sizes: Tuple[AstNode, ...],
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.vars_type = vars_type
+        self.sizes = sizes
+
+    @property
+    def childs(self):
+        # return self.vars_type, (*self.vars_list)
+        return (self.vars_type,) + self.sizes
+
+    def __str__(self) -> str:
+        return 'new class'
+
 
 class IfNode(StmtNode):
     """Класс для представления в AST-дереве условного оператора
@@ -449,6 +480,29 @@ class ForNode(StmtNode):
         self.body.semantic_check(IdentScope(scope))
         self.node_type = TypeDesc.VOID
 
+class WhileNode(StmtNode):
+    def __init__(self, cond: ExprNode, stmt: StmtNode,
+                 row: Optional[int] = None, line: Optional[int] = None, **props):
+        super().__init__(row=row, line=line, **props)
+        self.cond = cond
+        self.stmt = stmt
+
+    @property
+    def childs(self) -> Tuple[ExprNode, StmtNode]:
+        return self.cond, self.stmt
+
+    def __str__(self) -> str:
+        return 'while'
+
+    def semantic_check(self, scope: IdentScope) -> None:
+        scope = IdentScope(scope)
+        if self.cond == EMPTY_STMT:
+            self.cond = LiteralNode('true')
+        self.cond.semantic_check(scope)
+        self.cond = type_convert(self.cond, TypeDesc.BOOL, None, 'условие')
+        self.stmt.semantic_check(IdentScope(scope))
+        self.node_type = TypeDesc.VOID
+
 
 class ParamNode(StmtNode):
     """Класс для представления в AST-дереве объявления параметра функции
@@ -477,7 +531,7 @@ class ParamNode(StmtNode):
         self.node_type = TypeDesc.VOID
 
 class ArrayNode(StmtNode):
-    def __init__(self, vars_type: StmtNode,
+    def __init__(self, vars_type: TypeNode,
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.vars_type = vars_type
@@ -491,10 +545,10 @@ class ArrayNode(StmtNode):
         return '[]'
 
     def semantic_check(self, scope: IdentScope) -> None:
-        pass
+        self.vars_type.semantic_check(scope)
 
 class ArrayNewInitNode(StmtNode):
-    def __init__(self, vars_type: StmtNode, *sizes: Tuple[AstNode, ...],
+    def __init__(self, vars_type: TypeNode, *sizes: Tuple[AstNode, ...],
                  row: Optional[int] = None, line: Optional[int] = None, **props):
         super().__init__(row=row, line=line, **props)
         self.vars_type = vars_type
@@ -509,7 +563,7 @@ class ArrayNewInitNode(StmtNode):
         return 'new'
 
     def semantic_check(self, scope: IdentScope) -> None:
-        pass
+        self.vars_type.semantic_check(scope)
 
 
 class ValArrNode(StmtNode):
